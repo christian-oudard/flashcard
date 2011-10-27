@@ -1,52 +1,37 @@
-#! /usr/bin/env python2.4
+#! /usr/bin/env python3
 # coding: utf-8
 
-from elementtree.ElementTree import parse
+import re
 
-class Card(object):
-    def __init__(self, ask_fields, answer_fields, box=1):
-        '''Data structure to hold a card during quizzing
-ask_fields - a sequence of field values to ask
-answer_fields - a sequence of fields making the correct answer
-box - integer value of the leitner box
-        '''
-        self.ask_fields = ask_fields
-        self.answer_fields = answer_fields
-        self.box = int(box)
-
-    def __str__(self):
-        return '\n'.join(self.ask_fields + ['-----'] + self.answer_fields)
-
-def load_cards(deckfile):
+_card_regex = re.compile(
+    r'(?P<word>\w+) ?(?P<pronunciation>\([\w\d]+\)) - (?P<definition>.*)',
+    re.UNICODE,
+)
+def load_cards(deck_string):
+    """
+    >>> load_cards('')
+    []
+    >>> load_cards('''
+    ... # comment
+    ... 你好 (ni3hao3) - hello
+    ... 永 (yong3) - eternity
+    ... ''')
+    [('你好', 'ni3hao3', 'hello'), ('永', 'yong3', 'eternity')]
+    """
     cards = []
-    tree = parse(deckfile)
-    xdeck = tree.getroot()
+    for line in deck_string.splitlines():
+        line = line.strip()
+        if line == '':
+            continue
+        if line.startswith('#'):
+            continue
+        m = _card_regex.match(line)
+        if m is None:
+           print('Invalid Line: %s' % line)
+        word = m.group('word')
+        pronunciation = m.group('pronunciation').strip('()')
+        definition = m.group('definition')
 
-    for xcard in xdeck:
-        fields = []
-        stats = []
-        # get field values and sides from xml
-        for xitem in xcard:
-            if xitem.tag == 'field':
-                fields.append(xitem.text)
-            elif xitem.tag == 'stats':
-                stats.append((xitem.attrib['ask'],
-                              xitem.attrib['answer'],
-                              xitem.attrib['box']))
-        # create a card for each variation of sides
-        for (ask, answer, box) in stats:
-            ask = [int(i) for i in ask.split(',')]
-            answer = [int(i) for i in answer.split(',')]
-            ask_fields = [fields[i-1] for i in ask]
-            answer_fields = [fields[i-1] for i in answer]
-            cards.append(Card(ask_fields, answer_fields, box))
+        cards.append((word, pronunciation, definition))
 
     return cards
-
-if __name__ == '__main__':
-#    c = Card([u'你好'],['hello'])
-#    print unicode(c)
-
-    for c in load_cards(open('testdeck.xml')):
-        print unicode(c)
-        print
