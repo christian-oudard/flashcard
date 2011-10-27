@@ -1,3 +1,5 @@
 #! /bin/sh
 
-nosetests --with-coverage
+nosetests --with-coverage \
+	--cover-package flashcard \
+	--cover-package tests \

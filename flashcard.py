@@ -1,6 +1,3 @@
-#! /usr/bin/env python3
-# coding: utf-8
-
 import re
 
 _card_regex = re.compile(
@@ -18,6 +15,7 @@ def load_cards(deck_string):
         m = _card_regex.match(line)
         if m is None:
            print('Invalid Line: %s' % line)
+           continue
         word = m.group('word')
         pronunciation = m.group('pronunciation').strip('()')
         definition = m.group('definition')
