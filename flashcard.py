@@ -8,16 +8,6 @@ _card_regex = re.compile(
     re.UNICODE,
 )
 def load_cards(deck_string):
-    """
-    >>> load_cards('')
-    []
-    >>> load_cards('''
-    ... # comment
-    ... 你好 (ni3hao3) - hello
-    ... 永 (yong3) - eternity
-    ... ''')
-    [('你好', 'ni3hao3', 'hello'), ('永', 'yong3', 'eternity')]
-    """
     cards = []
     for line in deck_string.splitlines():
         line = line.strip()
