@@ -1,18 +1,53 @@
 import os
+import random
 import sys
-from io import StringIO
 from contextlib import contextmanager
+from io import StringIO
+from textwrap import dedent
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, with_setup
 
 from flashcard import load_cards, main
 
-test_data = '''\
-# comment
+# Testing utilities.
 
-你好 (ni3hao3) - hello
-永 (yong3) - eternity
-'''
+test_data = dedent('''\
+    # comment
+
+    你好 (ni3hao3) - hello
+    永 (yong3) - eternity
+''')
+
+test_input = '\nY\n\nN\n'
+
+test_output = dedent('''\
+    Found 2 cards
+    Press Enter to flip card, Q to quit.
+
+    ========================================
+
+    你好
+
+    ----------------------------------------
+
+    ni3hao3
+    hello
+
+    Were you correct? (Y/N)
+    ========================================
+
+    永
+
+    ----------------------------------------
+
+    yong3
+    eternity
+
+    Were you correct? (Y/N)
+''')
+
+def fix_whitespace(s):
+    return '\n'.join(line.rstrip() for line in s.splitlines())
 
 @contextmanager
 def assert_output(expected):
@@ -22,7 +57,31 @@ def assert_output(expected):
     sys.stdout = old_stdout
     fake_stdout.seek(0)
     actual = fake_stdout.read()
-    assert_equal(actual, expected)
+    assert_equal(fix_whitespace(actual), fix_whitespace(expected))
+
+@contextmanager
+def fake_input(input_data):
+    old_stdin = sys.stdin
+    sys.stdin = fake_stdin = StringIO(input_data)
+    fake_stdin.seek(0)
+    yield
+    sys.stdin = old_stdin
+
+def setup_fake_cards():
+    with open('fake_cards', 'w') as f:
+        f.write(test_data)
+
+def teardown_fake_cards():
+    os.remove('fake_cards')
+
+def setup_fake_cards_stats():
+    with open('fake_cards.stats', 'w') as f:
+        f.write('\n')
+
+def teardown_fake_cards_stats():
+    os.remove('fake_cards.stats')
+
+# Test functions.
 
 def test_load_cards():
     assert_equal(load_cards(''), [])
@@ -35,30 +94,39 @@ def test_load_cards():
     )
 
 def test_load_cards_error():
-    with assert_output('Invalid Line: bad line\n'):
+    with assert_output(''):
         assert_equal(load_cards('bad line'), [])
 
-def test_main():
-    with open('testfile', 'w') as f:
-        f.write(test_data)
-
-    with assert_output('{}\n'):
-        main(['testfile'])
-
-    os.remove('testfile')
-
 def test_main_error():
-    with assert_output('Please specify a deck of flash cards.\n'):
+    with assert_output('Please specify a deck of flash cards.'):
         main([])
 
-def test_load_stats():
-    with open('testfile', 'w') as f:
-        f.write(test_data)
-    with open('testfile.stats', 'w') as f:
-        f.write('\n')
+@with_setup(setup_fake_cards, teardown_fake_cards)
+def test_main():
+    random.seed(0);
+    with fake_input(test_input):
+        with assert_output(test_output):
+            main(['fake_cards'])
 
-    with assert_output('{}\n'):
-        main(['testfile'])
+@with_setup(setup_fake_cards, teardown_fake_cards)
+@with_setup(setup_fake_cards_stats, teardown_fake_cards_stats)
+def test_main_load_stats():
+    random.seed(0);
+    with fake_input(test_input):
+        with assert_output(test_output):
+            main(['fake_cards'])
 
-    os.remove('testfile')
-    os.remove('testfile.stats')
+@with_setup(setup_fake_cards, teardown_fake_cards)
+def test_main_quit():
+    random.seed(0);
+    with fake_input('q\n'):
+        with assert_output(dedent('''\
+            Found 2 cards
+            Press Enter to flip card, Q to quit.
+
+            ========================================
+
+            你好
+
+        ''')):
+            main(['fake_cards'])
