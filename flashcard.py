@@ -6,6 +6,8 @@ import re
 import sys
 from collections import namedtuple
 
+from card_stats import CardStats
+
 Card = namedtuple('Card', 'word pronunciation definition')
 
 _card_regex = re.compile(
@@ -32,6 +34,7 @@ def load_cards(deck_string):
     return cards
 
 def main(args):
+    # Validate arguments.
     if len(args) < 1:
         print('Please specify a deck of flash cards.')
         return
@@ -48,16 +51,21 @@ def main(args):
     stats_filename = os.path.join(deck_folder, deck_name + '.stats')
 
     if os.path.exists(stats_filename):
-        with open(stats_filename) as f:
+        with open(stats_filename, 'rb') as f:
             stats_data = f.read()
-        old_stats = load_stats(stats_data)
+        stats = CardStats.load(stats_data)
     else:
-        old_stats = {}
+        stats = CardStats()
 
-    # Start a quiz.
-    do_quiz(cards, old_stats)
+    # Start the quiz.
+    stats = do_quiz(cards, stats)
 
-def do_quiz(cards, old_stats):
+    # Save stats.
+    stats_data = stats.save()
+    with open(stats_filename, 'wb') as f:
+        f.write(stats_data)
+
+def do_quiz(cards, stats):
     print('Press Enter to flip card, Q to quit.')
     random.shuffle(cards)
     for card in cards:
@@ -66,14 +74,8 @@ def do_quiz(cards, old_stats):
         result = ask(front, back)
         if result == 'done':
             break
-        elif result is True:
-            pass#STUB, correct answer
-        elif result is False:
-            pass#STUB, incorrect answer
-
-    new_stats = {}
-    #STUB
-    return new_stats
+        stats.answer((front, back), result)
+    return stats
 
 def ask(front, back):
     print()
@@ -104,10 +106,6 @@ def ask(front, back):
             return True
         if command == 'n':
             return False
-
-def load_stats(stats_data):
-    #STUB
-    return {}
 
 if __name__ == '__main__':
     main(sys.argv[1:])

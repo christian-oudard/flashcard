@@ -8,6 +8,7 @@ from textwrap import dedent
 from nose.tools import assert_equal, with_setup
 
 from flashcard import load_cards, main
+from card_stats import CardStats
 
 # Testing utilities.
 
@@ -46,6 +47,11 @@ test_output = dedent('''\
     Were you correct? (Y/N)
 ''')
 
+test_stats = CardStats({
+    (('你好',), ('ni3hao3', 'hello')): [False, True, False, True, True],
+    (('ni3hao3', 'hello'), ('你好',)): [False, False, True],
+})
+
 def fix_whitespace(s):
     return '\n'.join(line.rstrip() for line in s.splitlines())
 
@@ -71,15 +77,14 @@ def setup_fake_cards():
     with open('fake_cards', 'w') as f:
         f.write(test_data)
 
-def teardown_fake_cards():
-    os.remove('fake_cards')
-
 def setup_fake_cards_stats():
-    with open('fake_cards.stats', 'w') as f:
-        f.write('\n')
+    with open('fake_cards.stats', 'wb') as f:
+        f.write(test_stats.save())
 
-def teardown_fake_cards_stats():
-    os.remove('fake_cards.stats')
+def teardown():
+    for filename in ['fake_cards', 'fake_cards.stats']:
+        if os.path.exists(filename):
+            os.remove(filename)
 
 # Test functions.
 
@@ -97,26 +102,31 @@ def test_load_cards_error():
     with assert_output(''):
         assert_equal(load_cards('bad line'), [])
 
+def test_save_load_stats():
+    data = test_stats.save()
+    stats = CardStats.load(data)
+    assert_equal(test_stats, stats)
+
 def test_main_error():
     with assert_output('Please specify a deck of flash cards.'):
         main([])
 
-@with_setup(setup_fake_cards, teardown_fake_cards)
+@with_setup(setup_fake_cards, teardown)
 def test_main():
     random.seed(0);
     with fake_input(test_input):
         with assert_output(test_output):
             main(['fake_cards'])
 
-@with_setup(setup_fake_cards, teardown_fake_cards)
-@with_setup(setup_fake_cards_stats, teardown_fake_cards_stats)
-def test_main_load_stats():
+@with_setup(setup_fake_cards, teardown)
+@with_setup(setup_fake_cards_stats, teardown)
+def test_main_load_empty_stats_file():
     random.seed(0);
     with fake_input(test_input):
         with assert_output(test_output):
             main(['fake_cards'])
 
-@with_setup(setup_fake_cards, teardown_fake_cards)
+@with_setup(setup_fake_cards, teardown)
 def test_main_quit():
     random.seed(0);
     with fake_input('q\n'):
